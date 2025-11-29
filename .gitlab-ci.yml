@@ -6,9 +6,9 @@ stages:
   - push
   - deploy
 
-image: docker:29.1.0
+image: docker:29.0.4
 services:
-  - docker:29.1.0-dind
+  - docker:29.0.4-dind
 
 variables:
   KUBECONFIG: $KUBECONFIG
