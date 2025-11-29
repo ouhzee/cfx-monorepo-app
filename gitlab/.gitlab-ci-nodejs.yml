@@ -27,7 +27,7 @@ security-node-sast:
     entrypoint: [""]
   script:
     - cd nodejs-app
-    - semgrep scan --config=p/javascript --sarif --output=semgrep.report.sarif
+    - semgrep scan --config=p/javascript --sarif --output=semgrep.report.sarif .
   artifacts:
     reports:
       sast: nodejs-app/semgrep.report.sarif
