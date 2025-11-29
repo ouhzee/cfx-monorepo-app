@@ -70,7 +70,7 @@ build-node-docker:
     expire_in: 1 hour
 
 push-node-docker:
-  stage: push_image
+  stage: push
   extends: .node-rules
   before_script:
     - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD

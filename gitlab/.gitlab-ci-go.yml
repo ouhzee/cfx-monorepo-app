@@ -68,7 +68,7 @@ build-go-docker:
     expire_in: 1 hour
 
 push-go-docker:
-  stage: push_image
+  stage: push
   extends: .go-rules
   before_script:
     - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
