@@ -1,0 +1,94 @@
+variables:
+  GO_IMAGE_TAG: $DOCKER_USERNAME/ozi-lab:go-app-$CI_COMMIT_SHORT_SHA
+  GO_IMAGE_TAR: go-app-image.tar
+
+.go-rules:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
+    - changes:
+        - go-app/**/*
+      when: on_success
+
+lint-go-code:
+  stage: lint
+  extends: .go-rules
+  image: golangci/golangci-lint:v1.55.2-alpine
+  script:
+    - cd go-app
+    - golangci-lint run --timeout=5m
+
+security-go-sast:
+  stage: lint
+  extends: .go-rules
+  image: securego/gosec:latest
+  script:
+    - cd go-app
+    - gosec -fmt=sarif -out=gosec.sarif ./...
+    - gosec -no-fail ./...
+  artifacts:
+    reports:
+      sast: go-app/gosec.sarif
+
+test-go:
+  stage: test
+  extends: .go-rules
+  image: golang:1.21-alpine
+  script:
+    - cd go-app
+    - go install gotest.tools/gotestsum@latest
+    - gotestsum --junitfile report.xml --format testname -- ./...
+  artifacts:
+    when: always
+    reports:
+      junit: go-app/report.xml
+
+build-go-binary:
+  stage: build_source
+  extends: .go-rules
+  image: golang:1.21-alpine
+  script:
+    - cd go-app
+    - CGO_ENABLED=0 GOOS=linux go build -o main .
+  artifacts:
+    paths:
+      - go-app/main
+    expire_in: 1 hour
+
+build-go-docker:
+  stage: build_image
+  extends: .go-rules
+  script:
+    - cd go-app
+    - docker build -t $GO_IMAGE_TAG .
+    - docker save -o $GO_IMAGE_TAR $GO_IMAGE_TAG
+  artifacts:
+    paths:
+      - go-app/$GO_IMAGE_TAR
+    expire_in: 1 hour
+
+push-go-docker:
+  stage: push_image
+  extends: .go-rules
+  before_script:
+    - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+  script:
+    - cd go-app
+    - docker load -i $GO_IMAGE_TAR
+    - docker push $GO_IMAGE_TAG
+
+deploy-go:
+  stage: deploy
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [""]
+  script:
+    - sed -i "s|__IMAGE_PLACEHOLDER__|$GO_IMAGE_TAG|g" k8s/go-deployment.yaml
+    - cat k8s/go-deployment.yaml
+    - echo "kubectl apply -f k8s/go-deployment.yaml"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+    - changes:
+        - go-app/**/*
+      when: manual

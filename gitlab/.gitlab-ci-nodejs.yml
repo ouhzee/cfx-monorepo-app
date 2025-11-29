@@ -1,0 +1,96 @@
+variables:
+  NODE_IMAGE_TAG: $DOCKER_USERNAME/node-web-app:$CI_COMMIT_SHORT_SHA
+  NODE_IMAGE_TAR: nodejs-app-image.tar
+
+.node-rules:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
+    - changes:
+        - nodejs-app/**/*
+      when: on_success
+
+lint-node-code:
+  stage: lint
+  extends: .node-rules
+  image: node:18-alpine
+  script:
+    - cd nodejs-app
+    - npm ci
+    - npm run lint
+
+security-node-sast:
+  stage: lint
+  extends: .node-rules
+  image: returntocorp/semgrep
+  script:
+    - cd nodejs-app
+    - semgrep scan --config=p/javascript --sarif --output=semgrep.report.sarif
+  artifacts:
+    reports:
+      sast: nodejs-app/semgrep.report.sarif
+
+test-node:
+  stage: test
+  extends: .node-rules
+  image: node:18-alpine
+  script:
+    - cd nodejs-app
+    - npm ci
+    - npm test
+  artifacts:
+    when: always
+    reports:
+      junit: nodejs-app/junit.xml
+
+build-node-source:
+  stage: build_source
+  extends: .node-rules
+  image: node:18-alpine
+  script:
+    - cd nodejs-app
+    - npm ci --omit=dev
+  artifacts:
+    paths:
+      - nodejs-app/node_modules
+      - nodejs-app/server.js
+      - nodejs-app/package.json
+    expire_in: 1 hour
+
+build-node-docker:
+  stage: build_image
+  extends: .node-rules
+  script:
+    - cd nodejs-app
+    - docker build -t $NODE_IMAGE_TAG .
+    - docker save -o $NODE_IMAGE_TAR $NODE_IMAGE_TAG
+  artifacts:
+    paths:
+      - nodejs-app/$NODE_IMAGE_TAR
+    expire_in: 1 hour
+
+push-node-docker:
+  stage: push_image
+  extends: .node-rules
+  before_script:
+    - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+  script:
+    - cd nodejs-app
+    - docker load -i $NODE_IMAGE_TAR
+    - docker push $NODE_IMAGE_TAG
+
+deploy-node:
+  stage: deploy
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [""]
+  script:
+    - sed -i "s|__IMAGE_PLACEHOLDER__|$NODE_IMAGE_TAG|g" k8s/node-deployment.yaml
+    - cat k8s/node-deployment.yaml
+    - echo "kubectl apply -f k8s/node-deployment.yaml"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+    - changes:
+        - nodejs-app/**/*
+      when: manual

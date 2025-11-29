@@ -1,0 +1,21 @@
+stages:
+  - lint
+  - test
+  - build_source
+  - build_image
+  - push
+  - deploy
+
+image: docker:29.1.0
+services:
+  - docker:29.1.0-dind
+
+variables:
+  KUBECONFIG: $KUBECONFIG
+  DOCKER_USERNAME: $DOCKER_USERNAME
+  DOCKER_PASSWORD: $DOCKER_PASSWORD
+  DOCKER_BUILDKIT: 1
+
+include:
+  - local: "gitlab/.gitlab-ci-go.yml"
+  - local: "gitlab/.gitlab-ci-nodejs.yml"
