@@ -13,7 +13,7 @@ variables:
 lint-go-code:
   stage: lint
   extends: .go-rules
-  image: golangci/golangci-lint:v1.55.2-alpine
+  image: golangci/golangci-lint:v1.61.0-alpine
   script:
     - cd go-app
     - golangci-lint run --timeout=5m
@@ -21,7 +21,9 @@ lint-go-code:
 security-go-sast:
   stage: lint
   extends: .go-rules
-  image: securego/gosec:latest
+  image:
+    name: securego/gosec:latest
+    entrypoint: [""]
   script:
     - cd go-app
     - gosec -fmt=sarif -out=gosec.sarif ./...

@@ -22,7 +22,9 @@ lint-node-code:
 security-node-sast:
   stage: lint
   extends: .node-rules
-  image: returntocorp/semgrep
+  image:
+    name: returntocorp/semgrep:latest
+    entrypoint: [""]
   script:
     - cd nodejs-app
     - semgrep scan --config=p/javascript --sarif --output=semgrep.report.sarif
