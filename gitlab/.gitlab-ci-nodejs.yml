@@ -1,5 +1,5 @@
 variables:
-  NODE_IMAGE_TAG: $DOCKER_USERNAME/node-web-app:$CI_COMMIT_SHORT_SHA
+  NODE_IMAGE_TAG: $DOCKER_USERNAME/nodejs-app:$CI_COMMIT_SHORT_SHA
   NODE_IMAGE_TAR: nodejs-app-image.tar
 
 .node-rules:
